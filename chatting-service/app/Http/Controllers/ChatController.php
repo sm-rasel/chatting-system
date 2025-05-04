@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\MessageSent;
+use App\Models\Chat;
 use App\Models\Conversation;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -10,7 +12,7 @@ use Illuminate\Support\Facades\Auth;
 
 class ChatController extends Controller
 {
-    public function serachUsers(Request $request): JsonResponse
+    public function searchUsers(Request $request): JsonResponse
     {
         $query = $request->query('q');
         $user = User::where('id', '!=', Auth::id())
@@ -63,6 +65,53 @@ class ChatController extends Controller
         ]);
 
         return response()->json($conversation);
+    }
+
+    public function getMessages($conversationId): JsonResponse
+    {
+        $conversation = Conversation::findOrFail($conversationId);
+
+        if (!$this->canAccessConversation($conversation)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $messages = $conversation->messages()
+            ->with(['sender', 'receiver'])
+            ->get();
+
+        return response()->json($messages);
+    }
+
+    public function sendMessage(Request $request, $conversationId): JsonResponse
+    {
+        $request->validate(['message' => 'required|string']);
+
+        $conversation = Conversation::findOrFail($conversationId);
+
+        if (!$this->canAccessConversation($conversation)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $chat = Chat::create([
+            'sender_id' => Auth::id(),
+            'receiver_id' => $this->getReceiverId($conversation),
+            'conversation_id' => $conversationId,
+            'message' => $request->message,
+        ]);
+
+        broadcast(new MessageSent($chat))->toOthers();
+
+        return response()->json($chat);
+    }
+
+    private function canAccessConversation(Conversation $conversation): bool
+    {
+        return $conversation->user_one_id === Auth::id() || $conversation->user_two_id === Auth::id();
+    }
+
+    private function getReceiverId(Conversation $conversation)
+    {
+        return $conversation->user_one_id === Auth::id() ? $conversation->user_two_id : $conversation->user_one_id;
     }
 
 }
