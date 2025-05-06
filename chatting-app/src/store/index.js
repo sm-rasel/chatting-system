@@ -1,5 +1,5 @@
 import { createStore } from 'vuex'
-import axios from "axios";
+import axios from "../../plugins/axios.js";
 
 export default createStore({
   state: {
@@ -20,14 +20,14 @@ export default createStore({
   },
   actions: {
     async register({ commit }, credentials) {
-      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/register`, credentials)
+      const res = await axios.post(`/register`, credentials)
       commit('setUser', res.data.user);
       commit('setToken', res.data.token);
       localStorage.setItem('token', res.data.token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`
     },
     async login({ commit }, credentials) {
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/login`, credentials);
+      const response = await axios.post(`/login`, credentials);
       commit('setUser', response.data.user);
       commit('setToken', response.data.token);
       localStorage.setItem('token', response.data.token);
@@ -35,7 +35,7 @@ export default createStore({
     },
 
     async logout({ commit }) {
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/logout`);
+      await axios.post(`/logout`);
       commit('clearAuth');
       localStorage.removeItem('token');
       delete axios.defaults.headers.common['Authorization'];
@@ -43,7 +43,7 @@ export default createStore({
     initializeAuth({ commit }) {
       const token = localStorage.getItem('token');
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      axios.get(`${import.meta.env.VITE_API_URL}/api/user`).then(res => {
+      axios.get(`/user`).then(res => {
         commit('setUser', res.data);
         commit('setToken', token)
       }).catch(() => {

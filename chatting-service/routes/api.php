@@ -16,9 +16,9 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
-    Route::get('/user/search', [ChatController::class, 'searchUsers']);
-    Route::get('/conversation' , [ChatController::class, 'getConversations']);
-    Route::post('/conversation' , [ChatController::class, 'startConversation']);
-    Route::get('/conversations/{conversationId}/messages' , [ChatController::class, 'getMessages']);
-    Route::post('/conversations/{conversationId}/messages' , [ChatController::class, 'sendMessage']);
+    Route::get('/search', [ChatController::class, 'searchUsers']);
+    Route::get('/conversations' , [ChatController::class, 'getConversations']);
+    Route::post('/conversations' , [ChatController::class, 'startConversation']);
+    Route::get('/conversations/{id}/messages' , [ChatController::class, 'getMessages']);
+    Route::post('/conversations/{id}/messages' , [ChatController::class, 'sendMessage']);
 });

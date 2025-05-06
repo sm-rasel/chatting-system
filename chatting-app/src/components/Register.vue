@@ -79,7 +79,7 @@ export default {
   methods: {
     async register() {
       try {
-        await this.$store.dispatch('register', this.form);
+        await this.$store.dispatch('register', this.data);
         this.$router.push('/chat');
       } catch (error) {
         this.error = error.response?.data?.message || 'Registration failed';

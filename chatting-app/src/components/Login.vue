@@ -57,6 +57,7 @@ export default {
     async login() {
       try {
         await this.$store.dispatch('login', this.data)
+        this.$router.push('/chat');
       } catch (error) {
         this.error = error.response?.data?.message || 'Login failed'
       }

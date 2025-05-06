@@ -15,30 +15,23 @@ class ChatController extends Controller
     public function searchUsers(Request $request): JsonResponse
     {
         $query = $request->query('q');
-        $user = User::where('id', '!=', Auth::id())
-                ->where(function ($q) use ($query) {
-                    $q->where('name', 'LIKE', "%{$query} %")
-                    ->orWhere('email', 'LIKE', "%{$query}%");
-                })->get();
-        return response()->json($user);
+        $users = User::where('name', 'like', "%{$query}%")
+            ->where('id', '!=', Auth::id())
+            ->get(['id', 'name']);
+
+        return response()->json($users);
     }
 
 
     public function getConversations(): JsonResponse
     {
         $conversations = Auth::user()->conversations()
-            ->with(['userOne', 'userTwo', 'messages'])
-            ->get()
-            ->map(function ($conversation) {
-                $otherUser = $conversation->user_one_id === Auth::id()
-                    ? $conversation->userTwo
-                    : $conversation->userOne;
-                return [
-                    'id' => $conversation->id,
-                    'other_user' => $otherUser,
-                    'last_message' => $conversation->messages->last(),
-                ];
-            });
+            ->with(['userOne', 'userTwo', 'messages' => function ($query) {
+                $query->latest()->first();
+            }])
+            ->get();
+
+        dd($conversations);
 
         return response()->json($conversations);
     }
@@ -99,9 +92,9 @@ class ChatController extends Controller
             'message' => $request->message,
         ]);
 
-        broadcast(new MessageSent($chat))->toOthers();
+        event(new MessageSent($chat));
 
-        return response()->json($chat);
+        return response()->json($chat->load('sender'), 201);
     }
 
     private function canAccessConversation(Conversation $conversation): bool
