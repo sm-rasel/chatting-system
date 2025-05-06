@@ -16,7 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->api(prepend:[EnsureFrontendRequestsAreStateful::class, HandleCors::class]);
+        $middleware->api(prepend:[HandleCors::class]);
 //        $middleware->alias([
 //            'auth:sanctum' => \Laravel\Sanctum\Http\Middleware\Authenticate::class
 //        ]);
