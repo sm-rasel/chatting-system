@@ -63,7 +63,7 @@
       </div>
 
       <!-- Chat Area -->
-      <div class="col-md-8 col-lg-9 p-0">
+      <div class="col-md-8 col-lg-9 p-0" style="margin-left: 431px;">
         <div v-if="activeConversation" class="chat-area">
           <div class="chat-header p-3 bg-whatsapp-green text-white d-flex align-items-center">
             <button class="btn btn-outline-light me-2 d-md-none" @click="activeConversation = null">
@@ -149,13 +149,18 @@ export default {
 
   async created() {
     await this.fetchUser();
-    await this.fetchConversations();
-    this.setupGlobalWebSocket();
+    if (this.user) {
+      await this.fetchConversations();
+      this.setupGlobalWebSocket();
+    } else {
+      console.error('User not loaded, skipping WebSocket and conversations setup');
+    }
   },
 
   beforeUnmount() {
     if (this.echo) {
       this.echo.disconnect();
+      console.log('WebSocket disconnected');
     }
   },
 
@@ -168,6 +173,7 @@ export default {
       try {
         const response = await axios.get('/user');
         this.user = response.data;
+        console.log('User fetched:', this.user);
       } catch (error) {
         console.error('Error fetching user:', error);
       }
@@ -209,12 +215,19 @@ export default {
           ...conv,
           last_message: conv.messages?.[0] || null
         }));
+        console.log('Conversations fetched:', this.conversations);
       } catch (error) {
         console.error('Error fetching conversations:', error);
       }
     },
 
     async selectConversation(conversation) {
+      // Leave the previous conversation channel if it exists
+      if (this.activeConversation && this.echo) {
+        this.echo.leave(`conversation.${this.activeConversation.id}`);
+        console.log(`Left channel: conversation.${this.activeConversation.id}`);
+      }
+
       this.activeConversation = conversation;
       this.loadingMessages = true;
 
@@ -224,6 +237,32 @@ export default {
         this.$nextTick(() => {
           this.scrollToBottom();
         });
+
+        // Set up WebSocket listener for the new conversation
+        if (this.echo && this.user) {
+          this.echo.private(`conversation.${conversation.id}`)
+            .listen('MessageSent', (data) => {
+              if (data.chat.sender.id !== this.user.id) {
+                this.messages.push(data.chat);
+                this.$nextTick(() => {
+                  this.scrollToBottom();
+                });
+
+                // Update last message in conversations list
+                const convIndex = this.conversations.findIndex(c => c.id === data.chat.conversation_id);
+                if (convIndex !== -1) {
+                  this.conversations[convIndex].last_message = data.chat;
+                }
+              }
+              console.log('Received message:', data.chat);
+            })
+            .error((error) => {
+              console.error('WebSocket error on conversation channel:', error);
+            });
+          console.log(`Subscribed to channel: conversation.${conversation.id}`);
+        } else {
+          console.warn('WebSocket not initialized or user not available');
+        }
       } catch (error) {
         console.error('Error fetching messages:', error);
       } finally {
@@ -317,6 +356,11 @@ export default {
     },
 
     setupGlobalWebSocket() {
+      if (!this.user) {
+        console.warn('User not loaded, skipping WebSocket setup');
+        return;
+      }
+
       window.Pusher = Pusher;
 
       this.echo = new Echo({
@@ -335,28 +379,30 @@ export default {
         },
       });
 
+      // Listen for connection events
+      this.echo.connector.pusher.connection.bind('connected', () => {
+        console.log('WebSocket connected');
+      });
+
+      this.echo.connector.pusher.connection.bind('disconnected', () => {
+        console.warn('WebSocket disconnected');
+      });
+
+      this.echo.connector.pusher.connection.bind('error', (error) => {
+        console.error('WebSocket connection error:', error);
+      });
+
       // Listen for new conversations
       this.echo.private(`user.${this.user.id}`)
         .listen('ConversationCreated', (data) => {
           this.conversations.unshift(data.conversation);
+          console.log('New conversation created:', data.conversation);
+        })
+        .error((error) => {
+          console.error('WebSocket error on user channel:', error);
         });
 
-      // Listen for new messages in active conversation
-      this.echo.private(`conversation.${this.activeConversation?.id}`)
-        .listen('MessageSent', (data) => {
-          if (data.chat.sender.id !== this.user.id) {
-            this.messages.push(data.chat);
-            this.$nextTick(() => {
-              this.scrollToBottom();
-            });
-
-            // Update last message in conversations list
-            const convIndex = this.conversations.findIndex(c => c.id === data.chat.conversation_id);
-            if (convIndex !== -1) {
-              this.conversations[convIndex].last_message = data.chat;
-            }
-          }
-        });
+      console.log('WebSocket initialized for user:', this.user.id);
     },
 
     async logout() {
