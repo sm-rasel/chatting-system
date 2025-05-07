@@ -21,4 +21,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/conversations' , [ChatController::class, 'startConversation']);
     Route::get('/conversations/{id}/messages' , [ChatController::class, 'getMessages']);
     Route::post('/conversations/{id}/messages' , [ChatController::class, 'sendMessage']);
+
 });

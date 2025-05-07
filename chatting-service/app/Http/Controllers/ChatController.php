@@ -35,7 +35,7 @@ class ChatController extends Controller
         return response()->json($conversations);
     }
 
-    public function startConversation(Request $request): JsonResponse
+    public function     startConversation(Request $request): JsonResponse
     {
         $request->validate(['user_id' => 'required|exists:users,id']);
 

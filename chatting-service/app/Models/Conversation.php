@@ -16,9 +16,9 @@ class Conversation extends Model
         'user_two_id',
     ];
 
-    public function message(): HasMany
+    public function messages(): HasMany
     {
-        return $this->hasMany(Chat::class);
+        return $this->hasMany(Chat::class, 'conversation_id', 'id');
     }
 
     public function userOne(): BelongsTo
