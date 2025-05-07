@@ -18,7 +18,7 @@
         </div>
         <ul class="list-group">
           <li v-for="conversation in conversations" :key="conversation.id" class="list-group-item list-group-item-dark" :class="{ active: activeConversation?.id === conversation.id }" @click="selectConversation(conversation)">
-            {{ conversation.user_one_id === user.id ? conversation.user_two_id?.name : conversation.user_one_id?.name }}
+            {{ conversation.user_one_id === user?.id ? conversation.user_two?.name : conversation.user_one?.name }}
             <small class="text-muted">{{ conversation.messages[0]?.message }}</small>
           </li>
         </ul>
@@ -28,7 +28,7 @@
       <div class="col-md-9 col-lg-10 p-0">
         <div v-if="activeConversation" class="chat-area">
           <div class="chat-header p-3 bg-primary text-white">
-            <h5>{{ activeConversation.user_one_id.id === user.id ? activeConversation.user_two_id.name : activeConversation.user_one_id.name }}</h5>
+            <h5>{{ activeConversation.user_one_id.id === user?.id ? activeConversation.user_two_id.name : activeConversation.user_one_id.name }}</h5>
           </div>
           <div class="chat-body p-3" ref="chatBody">
             <div v-for="message in messages" :key="message.id" class="message mb-3" :class="{ 'text-end': message.sender.id === user.id }">
@@ -49,6 +49,9 @@
         </div>
         <div v-else class="d-flex justify-content-center align-items-center h-100">
           <p class="text-muted">Select a conversation to start chatting</p>
+          <pre>{{ user?.id }}</pre>
+<!--          <br>-->
+<!--          <pre>{{ this.$store.state.user }}</pre>-->
         </div>
       </div>
     </div>
@@ -82,6 +85,12 @@ export default {
     },
   },
   methods: {
+    getOtherUserName() {
+      if (!this.activeConversation) return '';
+      return this.activeConversation.user_one_id === this.user?.id
+        ? this.activeConversation.user_two?.name
+        : this.activeConversation.user_one?.name;
+    },
     toggleSidebar() {
       this.sidebarVisible = !this.sidebarVisible;
     },
@@ -105,7 +114,6 @@ export default {
       const response = await axios.post('/conversations', { user_id: userId });
 
       this.conversations.push(response.data);
-      console.log('conversations =>', this.conversations);
       this.searchResults = [];
       this.searchQuery = '';
       this.selectConversation(response.data);
@@ -115,8 +123,9 @@ export default {
       this.conversations = response.data;
     },
     async selectConversation(conversation) {
+      console.log('conversation =>', conversation);
       this.activeConversation = conversation;
-      const response = await axios.get('/conversations/${conversation.id}/messages');
+      const response = await axios.get(`/conversations/${conversation.id}/messages`);
       this.messages = response.data.data.reverse();
       this.$nextTick(() => {
         this.scrollToBottom();
@@ -124,7 +133,7 @@ export default {
     },
     async sendMessage() {
       if (!this.newMessage.trim()) return;
-      const response = await axios.post('/conversations/${this.activeConversation.id}/messages', {
+      const response = await axios.post(`/conversations/${this.activeConversation.id}/messages`, {
         message: this.newMessage,
       });
       this.messages.push(response.data);

@@ -25,13 +25,12 @@ class ChatController extends Controller
 
     public function getConversations(): JsonResponse
     {
-        $conversations = Auth::user()->conversations()
-            ->with(['userOne', 'userTwo', 'messages' => function ($query) {
-                $query->latest()->first();
+        $conversations = Conversation::where('user_one_id', Auth::id())
+            ->orWhere('user_two_id', Auth::id())
+            ->with(['userOne:id,name', 'userTwo:id,name', 'messages' => function($query) {
+                $query->latest()->limit(1);
             }])
             ->get();
-
-        dd($conversations);
 
         return response()->json($conversations);
     }
@@ -40,7 +39,7 @@ class ChatController extends Controller
     {
         $request->validate(['user_id' => 'required|exists:users,id']);
 
-        $existingConversation = Conversation::where(function ($query) use ($request) {
+        $existingConversation = Conversation::with('userOne:id,name', 'userTwo:id,name')->where(function ($query) use ($request) {
             $query->where('user_one_id', Auth::id())
                 ->where('user_two_id', $request->user_id);
         })->orWhere(function ($query) use ($request) {
@@ -69,10 +68,11 @@ class ChatController extends Controller
         }
 
         $messages = $conversation->messages()
-            ->with(['sender', 'receiver'])
+            ->with(['sender:id,name', 'receiver:id,name'])
+            ->orderBy('created_at', 'asc')
             ->get();
 
-        return response()->json($messages);
+        return response()->json(['data' => $messages]);
     }
 
     public function sendMessage(Request $request, $conversationId): JsonResponse
