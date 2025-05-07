@@ -1,3 +1,4 @@
+* text=auto eol=lf
 /.phpunit.cache
 /node_modules
 /public/build
@@ -5,10 +6,6 @@
 /public/storage
 /storage/*.key
 /storage/pail
-/vendor
-.env
-.env.backup
-.phpactor.json
 .phpunit.result.cache
 Homestead.json
 Homestead.yaml
